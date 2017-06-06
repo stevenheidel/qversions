@@ -1,5 +1,14 @@
 # QVersion - Versioned quantum device calibration and performance parameters
 
+## Setup
+
+1. Install sqlalchemy v1.1
+
+## Run tests
+
+1. Install pytest v3.1
+2. In root dir, run `pytest tests`
+
 ## Assumptions
 
 Throughput:
@@ -32,5 +41,4 @@ Qubits and Gates will have a timestamp as part of their primary key to allow ver
 
 Specifically excluding referential integrity. Most access will be through the DeviceSummary interface which can check for integrity at that time.
 
-Timestamp as part of the key could mean writes could fail if they happen at the exact same time. This should be very rare though: it takes a lot of effort to
-get new measurements on the hardware so doubt it will be updated often.
+Timestamp as part of the key could mean writes could fail if they happen at the exact same time. This should be very rare though: it takes a lot of effort to get new measurements on the hardware so doubt it will be updated often.

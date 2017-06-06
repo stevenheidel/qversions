@@ -1,6 +1,7 @@
 from ._db import DeviceModel
 from ._utils import validate_field, validate_param
 from contextlib import contextmanager
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 """
@@ -18,6 +19,12 @@ class Device(object):
         return "<Device(device_id={}, description={})>".format(self.device_id,
                 self.description)
 
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __hash__(self):
+        return hash((self.device_id, self.description))
+
 class Devices(object):
     def __init__(self, engine):
         self.sessionmaker = sessionmaker(bind=engine)
@@ -30,8 +37,11 @@ class Devices(object):
         :param Device device: Device to create
         """
         validate_param("device", device, Device)
-        with self._session() as session:
-            session.add(_validate(device))
+        try:
+            with self._session() as session:
+                session.add(_validate(device))
+        except IntegrityError:
+            raise RuntimeError("Device already exists")
 
     def get_device(self, device_id):
         """
@@ -67,6 +77,8 @@ class Devices(object):
         _validate(device)
         with self._session() as session:
             old_device = session.query(DeviceModel).get(device.device_id)
+            if old_device is None:
+                raise RuntimeError("device_id {} does not exist".format(device.device_id))
             old_device.description = device.description
 
     def delete_device(self, device_id):
@@ -78,6 +90,8 @@ class Devices(object):
         validate_param("device_id", device_id, str)
         with self._session() as session:
             deleted_device = session.query(DeviceModel).get(device_id)
+            if deleted_device is None:
+                raise RuntimeError("device_id {} does not exist".format(device_id))
             deleted_device.archived = True
 
     def get_archived_devices(self):

@@ -29,6 +29,9 @@ class Qubit(object):
                 .format(self.device_id, self.qubit_id, self.resonance_frequency,
                         self.t1, self.t2)
 
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
 class Qubits(object):
     def __init__(self, engine):
         self.sessionmaker = sessionmaker(bind=engine)
