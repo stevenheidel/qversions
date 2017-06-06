@@ -17,7 +17,7 @@ Primary goal should be to never delete information. These parameters may be diff
 
 ## Design
 
-Devices -> Qubits -> Gates will be associated using foreign keys
+Devices -> Qubits -> Gates will be associated using compound keys. There's no reason to use auto-generated ids / foreign keys given that the problem has well-defined ids for each entity already.
 
 Qubits and Gates will use device id in their primary key so that data could be partitioned in the future (assuming a lot of measurements and versions)
 
