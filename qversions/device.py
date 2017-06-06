@@ -68,9 +68,6 @@ class Devices:
         """
         Archive a device. Will raise exception if device does not exist.
 
-        Also archives all the Qubits for this device as well as the Gates for
-        those Qubits.
-
         :param string device_id: Device id
         """
         with self._session() as session:
@@ -90,9 +87,6 @@ class Devices:
     def restore_device(self, device_id):
         """
         Un-archive a device. Will raise exception if device was never created.
-
-        Also un-archives all the Qubits for this device as well as the Gates for
-        those Qubits.
 
         :param string device_id: Device id
         :return: The un-archived device
