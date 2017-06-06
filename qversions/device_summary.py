@@ -6,7 +6,7 @@ from .qubit import Qubits
 High level module for interacting with this versioning system.
 """
 
-class DeviceSummary:
+class DeviceSummary(object):
     def __init__(self, device_id, summary, qubits, gates):
         self.device_id = device_id
         """Unique device id such as '7-qubit-prototype'"""
@@ -41,7 +41,7 @@ class DeviceSummary:
         """
         return gates.get(qubit_id)
 
-class DeviceSummaries:
+class DeviceSummaries(object):
     def __self__(engine):
         self.devices = Devices(engine)
         self.gates = Gates(engine)

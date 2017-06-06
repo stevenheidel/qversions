@@ -1,3 +1,3 @@
-- error messages in device.py
+- error messages in device.py, qubit.py
 - doc in DeviceSummary
-- change save_qubit / save_gate return type to timestamp
+- change save_gate return type to timestamp

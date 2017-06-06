@@ -1,4 +1,5 @@
 from ._db import DeviceModel
+from ._utils import validate_field, validate_param
 from contextlib import contextmanager
 from sqlalchemy.orm import sessionmaker
 
@@ -6,18 +7,18 @@ from sqlalchemy.orm import sessionmaker
 Module for interacting with Quantum devices.
 """
 
-class Device:
+class Device(object):
     def __init__(self, device_id, description=None):
         self.device_id = device_id
         """Unique device id such as '7-qubit-prototype'"""
         self.description = description
-        """Optional short description of the device"""
+        """Short description of the device (optional)"""
 
     def __repr__(self):
         return "<Device(device_id={}, description={})>".format(self.device_id,
                 self.description)
 
-class Devices:
+class Devices(object):
     def __init__(self, engine):
         self.sessionmaker = sessionmaker(bind=engine)
 
@@ -28,6 +29,7 @@ class Devices:
 
         :param Device device: Device to create
         """
+        validate_param("device", device, Device)
         with self._session() as session:
             session.add(_validate(device))
 
@@ -39,8 +41,9 @@ class Devices:
         :return: Either a device or None if not found or device was deleted
         :rtype: Device
         """
-        result = self._query().filter_by(archived=False).filter_by(
-                device_id=device_id).one_or_none()
+        validate_param("device_id", device_id, str)
+        result = self._query().filter_by(archived=False, device_id=device_id)\
+                .one_or_none()
         return _wrap(result)
 
     def get_all_devices(self):
@@ -60,6 +63,8 @@ class Devices:
 
         :param Device device: Device to update
         """
+        validate_param("device", device, Device)
+        _validate(device)
         with self._session() as session:
             old_device = session.query(DeviceModel).get(device.device_id)
             old_device.description = device.description
@@ -70,6 +75,7 @@ class Devices:
 
         :param string device_id: Device id
         """
+        validate_param("device_id", device_id, str)
         with self._session() as session:
             deleted_device = session.query(DeviceModel).get(device_id)
             deleted_device.archived = True
@@ -92,6 +98,7 @@ class Devices:
         :return: The un-archived device
         :rtype: Device
         """
+        validate_param("device_id", device_id, str)
         with self._session() as session:
             deleted_device = session.query(DeviceModel).get(device_id)
             deleted_device.archived = False
@@ -110,8 +117,8 @@ def _validate(device):
     """
     Validate the public Device API and then convert to internal model.
     """
-    if device.device_id is None:
-        raise "device_id must be defined"
+    validate_field(device, "device_id", str)
+    validate_field(device, "description", str, optional=True)
 
     return DeviceModel(device_id=device.device_id,
             description=device.description)

@@ -3,7 +3,7 @@
 Module for interacting with Quantum Gates.
 """
 
-class Gate:
+class Gate(object):
     def __init__(self, device_id, qubit_id, gate_id, amplitude, width, phase):
         self.device_id = device_id
         """Device that this gate is associated with"""
@@ -12,11 +12,11 @@ class Gate:
         self.gate_id = gate_id
         """Short name string like '+X' to uniquely identify the gate"""
         self.amplitude = amplitude
-        """Amplitude of control pulse in mV"""
+        """Amplitude of control pulse in mV (optional)"""
         self.width = width
-        """Width of control pulse in ns"""
+        """Width of control pulse in ns (optional)"""
         self.phase = phase
-        """Phase of control pulse"""
+        """Phase of control pulse (optional)"""
 
 def save_gate(gate):
     """

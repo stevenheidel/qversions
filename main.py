@@ -1,4 +1,5 @@
 from qversions.device import Device, Devices
+from qversions.qubit import Qubit, Qubits
 
 from sqlalchemy import create_engine
 engine = create_engine("sqlite:///:memory:")
@@ -18,3 +19,19 @@ devices.delete_device("abc")
 print(devices.get_device("abc"))
 print(devices.get_all_devices())
 print(devices.get_archived_devices())
+
+qubits = Qubits(engine)
+qubits.save_qubit(Qubit(device_id="abc", qubit_id=0, t1=0.5))
+print(qubits.get_qubit("abc", 0))
+timestamp_before_delete = qubits.save_qubit(Qubit(device_id="abc", qubit_id=0, t1=0.3))
+print(qubits.get_qubit("abc", 0))
+print(qubits.get_qubits_by_device("abc"))
+qubits.delete_qubit("abc", 0)
+print(qubits.get_qubit("abc", 0))
+print(qubits.get_qubits_by_device("abc"))
+qubits.save_qubit(Qubit(device_id="abc", qubit_id=0, t1=0.2))
+print(qubits.get_qubit("abc", 0))
+timestamp = qubits.save_qubit(Qubit(device_id="abc", qubit_id=0, t1=0.1))
+print(timestamp)
+print(qubits.get_qubit("abc", 0, timestamp-1))
+print(qubits.get_qubits_by_device("abc", timestamp_before_delete))

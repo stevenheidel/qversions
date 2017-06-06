@@ -1,60 +1,166 @@
+from ._db import QubitModel
+from ._utils import validate_field, validate_param
+from contextlib import contextmanager
+from sqlalchemy import and_
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql import func
+import time
 
 """
 Module for interacting with Quantum Bits (Qubits).
 """
 
-class Qubit:
-    def __init__(self, device_id, qubit_id, resonance_frequency, t1, t2):
+class Qubit(object):
+    def __init__(self, device_id, qubit_id=None, resonance_frequency=None,
+            t1=None, t2=None):
         self.device_id = device_id
         """Device that this qubit is associated with"""
         self.qubit_id = qubit_id
         """Positive integer uniquely identifying this qubit"""
         self.resonance_frequency = resonance_frequency
-        """Resonance frequency in GHz"""
+        """Resonance frequency in GHz (optional)"""
         self.t1 = t1
-        """Coherence time constant 1 in microseconds"""
+        """Coherence time constant 1 in microseconds (optional)"""
         self.t2 = t2
-        """Coherence time constant 2 in microseconds"""
+        """Coherence time constant 2 in microseconds (optional)"""
 
-def save_qubit(qubit):
-    """
-    Save new parameters for this qubit. Will overwrite any previous data saved
-    for this device's qubit with the same qubit id.
+    def __repr__(self):
+        return "<Qubit(device_id={}, qubit_id={}, resonance_frequency={}, t1={}, t2={})>"\
+                .format(self.device_id, self.qubit_id, self.resonance_frequency,
+                        self.t1, self.t2)
 
-    :param Qubit qubit: Qubit to save
-    """
-    pass
+class Qubits(object):
+    def __init__(self, engine):
+        self.sessionmaker = sessionmaker(bind=engine)
 
-def get_qubit(device_id, qubit_id, timestamp=None):
-    """
-    Get a qubit by its id.
+    def save_qubit(self, qubit):
+        """
+        Save new parameters for this qubit. Will overwrite any previous data saved
+        for this device's qubit with the same qubit id.
 
-    :param string device_id: Device id
-    :param int qubit_id: Qubit id
-    :param long timestamp: If specified, will return the qubit's measurements
-            from that particular time. Otherwise, will return latest info.
-    :return: Either a qubit or None if not found or qubit was deleted
-    :rtype: Qubit
-    """
-    pass
+        :param Qubit qubit: Qubit to save
+        :return: Timestamp of this new qubit version
+        :rtype: int
+        """
+        validate_param("qubit", qubit, Qubit)
+        qubit_model = _validate(qubit)
+        with self._session() as session:
+            timestamp = _current_timestamp()
+            qubit_model.timestamp = timestamp
+            session.add(qubit_model)
+        return timestamp
 
-def get_qubits_by_device(device_id, timestamp=None):
-    """
-    Find all the qubits that have been saved for a device.
+    def get_qubit(self, device_id, qubit_id, timestamp=None):
+        """
+        Get a qubit by its id.
 
-    :param string device_id: Device id
-    :param long timestamp: If specified, will return the qubits that existed at
-            that particular time. Otherwise, will return latest info.
-    :return: List of qubits
-    :rtype: list
-    """
-    pass
+        :param string device_id: Device id
+        :param int qubit_id: Qubit id
+        :param long timestamp: If specified, will return the qubit's measurements
+                from that particular time. Otherwise, will return latest info.
+        :return: Either a qubit or None if not found or qubit was deleted
+        :rtype: Qubit
+        """
+        validate_param("device_id", device_id, str)
+        validate_param("qubit_id", qubit_id, int)
 
-def delete_qubit(device_id, qubit_id):
-    """
-    Archive a qubit. Will raise exception if qubit does not exist.
+        session = self.sessionmaker()
+        return _wrap(self._get_qubit(session, device_id, qubit_id, timestamp))
 
-    :param string device_id: Device id
-    :param int qubit_id: Qubit id
+    def get_qubits_by_device(self, device_id, timestamp=None):
+        """
+        Find all the qubits that have been saved for a device.
+
+        :param string device_id: Device id
+        :param long timestamp: If specified, will return the qubits that existed at
+                that particular time. Otherwise, will return latest info.
+        :return: List of qubits
+        :rtype: list
+        """
+        validate_param("device_id", device_id, str)
+
+        session = self.sessionmaker()
+        subquery = session.query(QubitModel.device_id, QubitModel.qubit_id,
+                func.max(QubitModel.timestamp).label("latest_timestamp"))\
+                        .group_by(QubitModel.device_id, QubitModel.qubit_id)
+        if timestamp:
+            subquery = subquery.filter(QubitModel.timestamp <= timestamp)
+        latest = subquery.subquery()
+        query = session.query(QubitModel).join((latest, and_(
+                QubitModel.device_id == latest.c.device_id,
+                QubitModel.timestamp == latest.c.latest_timestamp)))
+        return _wrap(query.all())
+
+    def delete_qubit(self, device_id, qubit_id):
+        """
+        Archive a qubit. Will raise exception if qubit does not exist.
+
+        :param string device_id: Device id
+        :param int qubit_id: Qubit id
+        :return: timestamp of when qubit was archived
+        :rtype: int
+        """
+        validate_param("device_id", device_id, str)
+        validate_param("qubit_id", qubit_id, int)
+
+        with self._session() as session:
+            qubit_model = self._get_qubit(session, device_id, qubit_id)
+            timestamp = _current_timestamp()
+            qubit_model.timestamp = timestamp
+            qubit_model.archived = True
+            return timestamp
+
+    def _get_qubit(self, session, device_id, qubit_id, timestamp=None):
+        subquery = session.query(QubitModel.device_id, QubitModel.qubit_id,
+                func.max(QubitModel.timestamp).label("latest_timestamp"))\
+                        .group_by(QubitModel.device_id, QubitModel.qubit_id)
+        if timestamp:
+            subquery = subquery.filter(QubitModel.timestamp <= timestamp)
+        latest = subquery.subquery()
+        query = session.query(QubitModel).join((latest, and_(
+                QubitModel.device_id == latest.c.device_id,
+                QubitModel.qubit_id == latest.c.qubit_id,
+                QubitModel.timestamp == latest.c.latest_timestamp)))
+        return query.first()
+
+    @contextmanager
+    def _session(self):
+        session = self.sessionmaker()
+        yield session
+        session.commit()
+
+def _current_timestamp():
     """
-    pass
+    Return milliseconds since epoch.
+    """
+    return int(time.time() * 1000)
+
+def _validate(qubit):
+    """
+    Validate the public Qubit API and then convert to internal model.
+    """
+    validate_field(qubit, "device_id", str)
+    validate_field(qubit, "qubit_id", int)
+    validate_field(qubit, "resonance_frequency", float, optional=True)
+    validate_field(qubit, "t1", float, optional=True)
+    validate_field(qubit, "t2", float, optional=True)
+
+    return QubitModel(device_id=qubit.device_id, qubit_id=qubit.qubit_id,
+            resonance_frequency=qubit.resonance_frequency, t1=qubit.t1,
+            t2=qubit.t2)
+
+def _wrap(model):
+    """
+    Converts the internal model into the public qubit API. Also filters out
+    archived and None qubits.
+    """
+    if model is None:
+        return None
+    elif isinstance(model, list):
+        return list(filter(lambda q: q is not None, map(_wrap, model)))
+    elif model.archived:
+        return None
+    else:
+        return Qubit(device_id=model.device_id, qubit_id=model.qubit_id,
+                resonance_frequency = model.resonance_frequency, t1=model.t1,
+                t2=model.t2)
