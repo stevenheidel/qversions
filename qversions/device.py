@@ -23,7 +23,7 @@ class Device(object):
         return self.__dict__ == other.__dict__
 
     def __hash__(self):
-        return hash((self.device_id, self.description))
+        return hash(frozenset(self.__dict__.items()))
 
 class Devices(object):
     def __init__(self, engine):

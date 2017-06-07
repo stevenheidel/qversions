@@ -34,7 +34,7 @@ class Qubit(object):
         return self.__dict__ == other.__dict__
 
     def __hash__(self):
-        return hash((self.device_id, self.qubit_id, self.resonance_frequency, self.t1, self.t2))
+        return hash(frozenset(self.__dict__.items()))
 
 class Qubits(object):
     def __init__(self, engine):
@@ -87,12 +87,7 @@ class Qubits(object):
         validate_param("device_id", device_id, str)
 
         session = self.sessionmaker()
-        subquery = session.query(QubitModel.device_id, QubitModel.qubit_id,
-                func.max(QubitModel.timestamp).label("latest_timestamp"))\
-                        .group_by(QubitModel.device_id, QubitModel.qubit_id)
-        if timestamp:
-            subquery = subquery.filter(QubitModel.timestamp < timestamp)
-        latest = subquery.subquery()
+        latest = _subquery(session, timestamp)
         query = session.query(QubitModel).join((latest, and_(
                 QubitModel.device_id == latest.c.device_id,
                 QubitModel.timestamp == latest.c.latest_timestamp)))
@@ -125,18 +120,21 @@ class Qubits(object):
             session.add(qubit)
             return timestamp
 
-    def _get_qubit(self, session, device_id, qubit_id, timestamp=None):
-        subquery = session.query(QubitModel.device_id, QubitModel.qubit_id,
-                func.max(QubitModel.timestamp).label("latest_timestamp"))\
-                        .group_by(QubitModel.device_id, QubitModel.qubit_id)
-        if timestamp:
-            subquery = subquery.filter(QubitModel.timestamp < timestamp)
-        latest = subquery.subquery()
+    def _get_qubit(self, session, device_id, qubit_id, timestamp):
+        latest = _subquery(session, timestamp)
         query = session.query(QubitModel).join((latest, and_(
                 QubitModel.device_id == latest.c.device_id,
                 QubitModel.qubit_id == latest.c.qubit_id,
                 QubitModel.timestamp == latest.c.latest_timestamp)))
         return query.first()
+
+    def _subquery(self, session, timestamp):
+        subquery = session.query(QubitModel.device_id, QubitModel.qubit_id,
+                func.max(QubitModel.timestamp).label("latest_timestamp"))\
+                        .group_by(QubitModel.device_id, QubitModel.qubit_id)
+        if timestamp:
+            subquery = subquery.filter(QubitModel.timestamp < timestamp)
+        return subquery.subquery()
 
     @contextmanager
     def _session(self):

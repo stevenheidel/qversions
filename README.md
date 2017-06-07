@@ -3,6 +3,14 @@
 ## Setup
 
 1. Install sqlalchemy v1.1
+2. Open up a `python3` prompt
+3. Run `>>> from main import *`
+
+## Example session
+
+```
+TODO
+```
 
 ## Run tests
 

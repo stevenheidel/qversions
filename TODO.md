@@ -1,2 +1,2 @@
 - doc in DeviceSummary
-- change save_gate return type to timestamp
+- what should gate phase be stored as???
