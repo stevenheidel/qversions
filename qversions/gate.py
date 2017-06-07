@@ -1,11 +1,18 @@
+from ._db import GateModel
+from ._utils import validate_field, validate_param
+from contextlib import contextmanager
+from sqlalchemy import and_
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm.session import make_transient
+from sqlalchemy.sql import func
+import time
 
 """
 Module for interacting with Quantum Gates.
 """
 
 class Gate(object):
-    def __init__(self, device_id, qubit_id, gate_id, amplitude, width, phase):
+    def __init__(self, device_id, qubit_id, gate_id, amplitude=None, width=None, phase=None):
         self.device_id = device_id
         """Device that this gate is associated with"""
         self.qubit_id = qubit_id
@@ -29,7 +36,7 @@ class Gates(object):
     def __init__(self, engine):
         self.sessionmaker = sessionmaker(bind=engine)
 
-    def save_gate(gate):
+    def save_gate(self, gate):
         """
         Save new parameters for this gate. Will overwrite any previous data saved
         for this qubit's gate with the same id.
@@ -46,7 +53,7 @@ class Gates(object):
             session.add(gate)
         return timestamp
 
-    def get_gate(device_id, qubit_id, gate_id, timestamp=None):
+    def get_gate(self, device_id, qubit_id, gate_id, timestamp=None):
         """
         Get a gate by its id.
 
@@ -65,7 +72,7 @@ class Gates(object):
         session = self.sessionmaker()
         return _wrap(self._get_gate(session, device_id, qubit_id, gate_id, timestamp))
 
-    def get_gates_by_qubit(device_id, qubit_id, timestamp=None):
+    def get_gates_by_qubit(self, device_id, qubit_id, timestamp=None):
         """
         Find all gates that have been saved for a qubit.
 
@@ -77,15 +84,16 @@ class Gates(object):
         validate_param("device_id", device_id, str)
         validate_param("qubit_id", qubit_id, int)
 
-        session = self.sessionmaker()
-        latest = _subquery(session, timestamp)
-        query = session.query(GateModel).join((latest, and_(
-                GateModel.device_id == latest.c.device_id,
-                GateModel.qubit_id == latest.c.qubit_id,
-                GateModel.timestamp == latest.c.latest_timestamp)))
-        return _wrap(query.all())
+        def query(query_builder):
+            query = query_builder.filter_by(device_id=device_id, qubit_id=qubit_id)
+            if timestamp:
+                return query.filter(GateModel.timestamp < timestamp)
+            return query
 
-    def get_gates_by_device(device_id, timestamp=None):
+        session = self.sessionmaker()
+        return _wrap(self._query(session, query).all())
+
+    def get_gates_by_device(self, device_id, timestamp=None):
         """
         Find all gates that have been saved for all qubits on a device.
 
@@ -97,14 +105,16 @@ class Gates(object):
         """
         validate_param("device_id", device_id, str)
 
-        session = self.sessionmaker()
-        latest = _subquery(session, timestamp)
-        query = session.query(GateModel).join((latest, and_(
-                GateModel.device_id == latest.c.device_id,
-                GateModel.timestamp == latest.c.latest_timestamp)))
-        return _wrap(query.all())
+        def query(query_builder):
+            query = query_builder.filter_by(device_id=device_id)
+            if timestamp:
+                return query.filter(GateModel.timestamp < timestamp)
+            return query
 
-    def delete_gate(device_id, qubit_id, gate_id):
+        session = self.sessionmaker()
+        return _wrap(self._query(session, query).all())
+
+    def delete_gate(self, device_id, qubit_id, gate_id):
         """
         Archive a gate. Will raise exception if gate does not exist.
 
@@ -119,11 +129,11 @@ class Gates(object):
         validate_param("gate_id", gate_id, str)
 
         with self._session() as session:
-            gate = self._get_gate(session, device_id, qubit_id, gate_id)
+            gate = self._get_gate(session, device_id, qubit_id, gate_id, timestamp=None)
             if gate is None:
                 raise RuntimeError("gate with device_id {} and qubit_id {} and gate_id {} does not exist"\
                         .format(device_id, qubit_id, gate_id))
-            # Don't track any more modifications to qubit
+            # Don't track any more modifications to gate
             session.expunge(gate)
             make_transient(gate)
             # Create a new entry with a new timestamp that is archived
@@ -134,21 +144,37 @@ class Gates(object):
             return timestamp
 
     def _get_gate(self, session, device_id, qubit_id, gate_id, timestamp):
-        latest = _subquery(session, timestamp)
+        """
+        Return a GateModel for this point in time.
+        """
+        def query(query_builder):
+            query_builder = query_builder\
+                .filter_by(device_id=device_id, qubit_id=qubit_id, gate_id=gate_id)
+
+            if timestamp:
+                return query_builder.filter(GateModel.timestamp < timestamp)
+            return query_builder
+
+        return self._query(session, query).one_or_none()
+
+    def _query(self, session, f):
+        """
+        Perform a query on only the latest version of the gates.
+        Takes a method f which adds filter operations to the query.
+        """
+        # Find the max for each gate
+        query_builder = session.query(GateModel.device_id, GateModel.qubit_id, GateModel.gate_id,
+                func.max(GateModel.timestamp).label("latest_timestamp"))\
+                        .group_by(GateModel.device_id, GateModel.qubit_id, GateModel.gate_id)
+        # Add custom filters
+        latest = f(query_builder).subquery()
+        # Join with whole table to get original information
         query = session.query(GateModel).join((latest, and_(
                 GateModel.device_id == latest.c.device_id,
                 GateModel.qubit_id == latest.c.qubit_id,
                 GateModel.gate_id == latest.c.gate_id,
                 GateModel.timestamp == latest.c.latest_timestamp)))
-        return query.first()
-
-    def _subquery(self, session, timestamp):
-        subquery = session.query(GateModel.device_id, GateModel.qubit_id, GateModel.gate_id,
-                func.max(GateModel.timestamp).label("latest_timestamp"))\
-                        .group_by(GateModel.device_id, GateModel.qubit_id, GateModel.gate_id)
-        if timestamp:
-            subquery = subquery.filter(GateModel.timestamp < timestamp)
-        return subquery.subquery()
+        return query
 
     @contextmanager
     def _session(self):
@@ -168,10 +194,10 @@ def _validate(gate):
     """
     validate_field(gate, "device_id", str)
     validate_field(gate, "qubit_id", int)
-    valdiate_field(gate, "gate_id", str)
-    validate_field(gate, "amplitude", float)
-    validate_field(gate, "width", float)
-    validate_field(gate, "phase", float)
+    validate_field(gate, "gate_id", str)
+    validate_field(gate, "amplitude", float, optional=True)
+    validate_field(gate, "width", float, optional=True)
+    validate_field(gate, "phase", float, optional=True)
 
     return GateModel(device_id=gate.device_id, qubit_id=gate.qubit_id,
             gate_id=gate.gate_id, amplitude=gate.amplitude, width=gate.width,

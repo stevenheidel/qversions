@@ -28,6 +28,9 @@ Data size:
 - 10-100 devices, bits, gates
 - Potentially many versions
 
+Interface:
+- Assuming this might eventually get put in front of a REST API or similar
+
 ## Special design goals
 
 Primary goal should be to never delete information. These parameters may be difficult to obtain so they should never be accidentally deleted.
@@ -37,7 +40,7 @@ needed maintenance.
 
 ## Design
 
-Devices -> Qubits -> Gates will be associated using compound keys. There's no reason to use auto-generated ids / foreign keys given that the problem has well-defined ids for each entity already.
+Devices -> Qubits -> Gates will be associated using compound keys. There's no reason to use auto-generated ids / foreign keys given that the problem has well-defined ids for each entity already. Compound keys also easily extend to a REST API.
 
 Qubits and Gates will use device id in their primary key so that data could be partitioned in the future (assuming a lot of measurements and versions)
 

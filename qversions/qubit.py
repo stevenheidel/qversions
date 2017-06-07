@@ -86,12 +86,14 @@ class Qubits(object):
         """
         validate_param("device_id", device_id, str)
 
+        def query(query_builder):
+            query = query_builder.filter_by(device_id=device_id)
+            if timestamp:
+                return query.filter(QubitModel.timestamp < timestamp)
+            return query
+
         session = self.sessionmaker()
-        latest = _subquery(session, timestamp)
-        query = session.query(QubitModel).join((latest, and_(
-                QubitModel.device_id == latest.c.device_id,
-                QubitModel.timestamp == latest.c.latest_timestamp)))
-        return _wrap(query.all())
+        return _wrap(self._query(session, query).all())
 
     def delete_qubit(self, device_id, qubit_id):
         """
@@ -106,7 +108,7 @@ class Qubits(object):
         validate_param("qubit_id", qubit_id, int)
 
         with self._session() as session:
-            qubit = self._get_qubit(session, device_id, qubit_id)
+            qubit = self._get_qubit(session, device_id, qubit_id, timestamp=None)
             if qubit is None:
                 raise RuntimeError("qubit with device_id {} and qubit_id {} does not exist"\
                         .format(device_id, qubit_id))
@@ -121,20 +123,36 @@ class Qubits(object):
             return timestamp
 
     def _get_qubit(self, session, device_id, qubit_id, timestamp):
-        latest = _subquery(session, timestamp)
+        """
+        Return a QubitModel for this point in time
+        """
+        def query(query_builder):
+            query_builder = query_builder\
+                    .filter_by(device_id=device_id, qubit_id=qubit_id)
+
+            if timestamp:
+                return query_builder.filter(QubitModel.timestamp < timestamp)
+            return query_builder
+
+        return self._query(session, query).one_or_none()
+
+    def _query(self, session, f):
+        """
+        Perform a query on only the latest version of the qubits.
+        Takes a method f which adds filter operations to the query.
+        """
+        # Find the max for each qubit
+        query_builder = session.query(QubitModel.device_id, QubitModel.qubit_id,
+                func.max(QubitModel.timestamp).label("latest_timestamp"))\
+                        .group_by(QubitModel.device_id, QubitModel.qubit_id)
+        # Add custom filters
+        latest = f(query_builder).subquery()
+        # Join with whole table to get original information
         query = session.query(QubitModel).join((latest, and_(
                 QubitModel.device_id == latest.c.device_id,
                 QubitModel.qubit_id == latest.c.qubit_id,
                 QubitModel.timestamp == latest.c.latest_timestamp)))
-        return query.first()
-
-    def _subquery(self, session, timestamp):
-        subquery = session.query(QubitModel.device_id, QubitModel.qubit_id,
-                func.max(QubitModel.timestamp).label("latest_timestamp"))\
-                        .group_by(QubitModel.device_id, QubitModel.qubit_id)
-        if timestamp:
-            subquery = subquery.filter(QubitModel.timestamp < timestamp)
-        return subquery.subquery()
+        return query
 
     @contextmanager
     def _session(self):
