@@ -24,7 +24,7 @@ class DeviceSummary(object):
                 "Description: {}\n"
                 "Qubits: {}\n"
                 "Gates: {}"
-                ).format(self.device_id, self.description, self.qubits, self.gates)
+                ).format(self.device_id, self.description, self.qubits, dict(self.gates))
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__

@@ -7,6 +7,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 engine = create_engine("sqlite:///:memory:")
+# engine = create_engine("postgres://postgres@localhost:5432/qversions")
+# engine = create_engine("mysql+mysqldb://root@localhost/qversions")
+
+Base.metadata.drop_all(engine)
 Base.metadata.create_all(engine)
 
 @pytest.yield_fixture(autouse=True)
@@ -15,6 +19,7 @@ def setup():
     session.query(DeviceModel).delete()
     session.query(GateModel).delete()
     session.query(QubitModel).delete()
+    session.commit()
     yield
 
 name1 = "test-device-1"

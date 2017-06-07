@@ -26,6 +26,11 @@ class Gate(object):
         self.phase = phase
         """Phase of control pulse (optional)"""
 
+    def __repr__(self):
+        return "<Gate(device_id={}, qubit_id={}, gate_id={}, amplitude={}, width={}, phase={})>"\
+                .format(self.device_id, self.qubit_id, self.gate_id,
+                         self.amplitude, self.width, self.phase)
+
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
 

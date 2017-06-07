@@ -6,16 +6,50 @@
 2. Open up a `python3` prompt
 3. Run `>>> from main import *`
 
+By default uses sqlite in memory, to use a real database modify main.py to either the sample mysql or postgresql strings. You may be required to install drivers such as 'mysqlclient' for mysql or 'psycopg2' for postgresql
+
 ## Example session
 
 ```
-TODO
+>>> from main import *
+>>> from qversions.gate import Gate
+
+# Sample device: qubit 0 has 1 gates, qubit 1 has no gates
+>>> q.get_device(sample)
+Device id: sample
+Description: Sample device
+Qubits: [<Qubit(device_id=sample, qubit_id=0, resonance_frequency=0.0, t1=0.0, t2=0.0)>, <Qubit(device_id=sample, qubit_id=1, resonance_frequency=1.0, t1=1.0, t2=1.0)>]
+Gates: {0: {<Gate(device_id=sample, qubit_id=0, gate_id=+X, amplitude=0.0, width=0.0, phase=0.0)>}}
+
+# Add new measurements for a gate.
+# This returns a version number to restore values before these ones.
+>>> prev_version = q.save_gate(Gate(sample, 0, "+X", 7.7, -9.1, 42.42))
+>>> q.get_device(sample)
+Device id: sample
+Description: Sample device
+Qubits: [<Qubit(device_id=sample, qubit_id=0, resonance_frequency=0.0, t1=0.0, t2=0.0)>, <Qubit(device_id=sample, qubit_id=1, resonance_frequency=1.0, t1=1.0, t2=1.0)>]
+Gates: {0: {<Gate(device_id=sample, qubit_id=0, gate_id=+X, amplitude=7.7, width=-9.1, phase=42.42)>}}
+
+# Get the previous version and recover the original values.
+>>> q.get_snapshot(sample, prev_version)
+Device id: sample
+Description: Sample device
+Qubits: [<Qubit(device_id=sample, qubit_id=0, resonance_frequency=0.0, t1=0.0, t2=0.0)>, <Qubit(device_id=sample, qubit_id=1, resonance_frequency=1.0, t1=1.0, t2=1.0)>]
+Gates: {0: {<Gate(device_id=sample, qubit_id=0, gate_id=+X, amplitude=0.0, width=0.0, phase=0.0)>}}
 ```
 
 ## Run tests
 
 1. Install pytest v3.1
-2. In root dir, run `pytest tests`
+2. In root dir, run `python3 -m pytest tests`
+
+## Public API
+
+Most interactions will take place with the DeviceSummaries object which returns all the information about a device, its qubits, and its gates.
+
+There's also classes (Devices, Qubits, Gates) to perform less common operations such as deletion.
+
+# QVersion design
 
 ## Assumptions
 
