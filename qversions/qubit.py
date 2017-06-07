@@ -3,6 +3,7 @@ from ._utils import validate_field, validate_param
 from contextlib import contextmanager
 from sqlalchemy import and_
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm.session import make_transient
 from sqlalchemy.sql import func
 import time
 
@@ -32,6 +33,9 @@ class Qubit(object):
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
 
+    def __hash__(self):
+        return hash((self.device_id, self.qubit_id, self.resonance_frequency, self.t1, self.t2))
+
 class Qubits(object):
     def __init__(self, engine):
         self.sessionmaker = sessionmaker(bind=engine)
@@ -46,11 +50,11 @@ class Qubits(object):
         :rtype: int
         """
         validate_param("qubit", qubit, Qubit)
-        qubit_model = _validate(qubit)
+        qubit = _validate(qubit)
         with self._session() as session:
             timestamp = _current_timestamp()
-            qubit_model.timestamp = timestamp
-            session.add(qubit_model)
+            qubit.timestamp = timestamp
+            session.add(qubit)
         return timestamp
 
     def get_qubit(self, device_id, qubit_id, timestamp=None):
@@ -107,10 +111,18 @@ class Qubits(object):
         validate_param("qubit_id", qubit_id, int)
 
         with self._session() as session:
-            qubit_model = self._get_qubit(session, device_id, qubit_id)
+            qubit = self._get_qubit(session, device_id, qubit_id)
+            if qubit is None:
+                raise RuntimeError("qubit with device_id {} and qubit_id {} does not exist"\
+                        .format(device_id, qubit_id))
+            # Don't track any more modifications to qubit
+            session.expunge(qubit)
+            make_transient(qubit)
+            # Create a new entry with a new timestamp that is archived
             timestamp = _current_timestamp()
-            qubit_model.timestamp = timestamp
-            qubit_model.archived = True
+            qubit.timestamp = timestamp
+            qubit.archived = True
+            session.add(qubit)
             return timestamp
 
     def _get_qubit(self, session, device_id, qubit_id, timestamp=None):
@@ -134,9 +146,9 @@ class Qubits(object):
 
 def _current_timestamp():
     """
-    Return milliseconds since epoch.
+    Return microseconds since epoch.
     """
-    return int(time.time() * 1000)
+    return int(time.time() * 1000000)
 
 def _validate(qubit):
     """

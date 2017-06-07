@@ -1,14 +1,6 @@
 from base_test import *
 import pytest
-from qversions._db import DeviceModel
 from qversions.device import Device, Devices
-from sqlalchemy.orm import sessionmaker
-
-@pytest.yield_fixture(autouse=True)
-def setup():
-    session = sessionmaker(bind=engine)()
-    session.query(DeviceModel).delete()
-    yield
 
 devices = Devices(engine)
 
