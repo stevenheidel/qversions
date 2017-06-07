@@ -9,7 +9,7 @@ Module for interacting with Quantum devices.
 """
 
 class Device(object):
-    def __init__(self, device_id, description=None):
+    def __init__(self, device_id, description):
         self.device_id = device_id
         """Unique device id such as '7-qubit-prototype'"""
         self.description = description
@@ -132,7 +132,7 @@ def _validate(device):
     Validate the public Device API and then convert to internal model.
     """
     validate_field(device, "device_id", str)
-    validate_field(device, "description", str, optional=True)
+    validate_field(device, "description", str)
 
     return DeviceModel(device_id=device.device_id,
             description=device.description)

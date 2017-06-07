@@ -1,15 +1,11 @@
 
-def validate_field(obj, name, typ, optional=False):
+def validate_field(obj, name, typ):
     """
     Ensure an object field is the correct type and defined.
     """
     value = obj.__dict__.get(name)
 
-    if not (value is None or isinstance(value, typ)):
-        raise TypeError("{} must be a {}".format(name, typ))
-
-    if not optional and value is None:
-        raise ValueError("{} must be defined".format(name))
+    validate_param(name, value, typ)
 
 def validate_param(name, value, typ):
     """

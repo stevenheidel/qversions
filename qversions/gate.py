@@ -12,7 +12,7 @@ Module for interacting with Quantum Gates.
 """
 
 class Gate(object):
-    def __init__(self, device_id, qubit_id, gate_id, amplitude=None, width=None, phase=None):
+    def __init__(self, device_id, qubit_id, gate_id, amplitude, width, phase):
         self.device_id = device_id
         """Device that this gate is associated with"""
         self.qubit_id = qubit_id
@@ -195,9 +195,9 @@ def _validate(gate):
     validate_field(gate, "device_id", str)
     validate_field(gate, "qubit_id", int)
     validate_field(gate, "gate_id", str)
-    validate_field(gate, "amplitude", float, optional=True)
-    validate_field(gate, "width", float, optional=True)
-    validate_field(gate, "phase", float, optional=True)
+    validate_field(gate, "amplitude", float)
+    validate_field(gate, "width", float)
+    validate_field(gate, "phase", float)
 
     return GateModel(device_id=gate.device_id, qubit_id=gate.qubit_id,
             gate_id=gate.gate_id, amplitude=gate.amplitude, width=gate.width,

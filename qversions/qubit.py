@@ -12,8 +12,7 @@ Module for interacting with Quantum Bits (Qubits).
 """
 
 class Qubit(object):
-    def __init__(self, device_id, qubit_id=None, resonance_frequency=None,
-            t1=None, t2=None):
+    def __init__(self, device_id, qubit_id, resonance_frequency, t1, t2):
         self.device_id = device_id
         """Device that this qubit is associated with"""
         self.qubit_id = qubit_id
@@ -172,9 +171,9 @@ def _validate(qubit):
     """
     validate_field(qubit, "device_id", str)
     validate_field(qubit, "qubit_id", int)
-    validate_field(qubit, "resonance_frequency", float, optional=True)
-    validate_field(qubit, "t1", float, optional=True)
-    validate_field(qubit, "t2", float, optional=True)
+    validate_field(qubit, "resonance_frequency", float)
+    validate_field(qubit, "t1", float)
+    validate_field(qubit, "t2", float)
 
     return QubitModel(device_id=qubit.device_id, qubit_id=qubit.qubit_id,
             resonance_frequency=qubit.resonance_frequency, t1=qubit.t1,
