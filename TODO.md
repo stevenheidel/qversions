@@ -1,2 +1,1 @@
-- doc in DeviceSummary
-- what should gate phase be stored as???
+- change all fields to required

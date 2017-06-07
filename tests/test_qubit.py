@@ -5,31 +5,30 @@ from qversions.qubit import Qubit, Qubits
 qubits = Qubits(engine)
 
 def test_save():
-    qubit = Qubit("test-device-1", 0, resonance_frequency=0.5, t1=1.5, t2=2.5)
-    qubits.save_qubit(qubit)
-    assert qubits.get_qubit("test-device-1", 0) == qubit
+    qubits.save_qubit(qubit0)
+    assert qubits.get_qubit(name1, 0) == qubit0
 
 def test_update():
-    qubit = Qubit("test-device-1", 0, t1=1.0)
-    initial_timestamp = qubits.save_qubit(qubit)
-    qubit.t1 = 2.0
-    update_timestamp = qubits.save_qubit(qubit)
-    assert qubits.get_qubit("test-device-1", 0).t1 == 2.0
-    assert qubits.get_qubit("test-device-1", 0, update_timestamp).t1 == 1.0
-    assert qubits.get_qubit("test-device-1", 0, initial_timestamp) == None
+    initial_timestamp = qubits.save_qubit(qubit0)
+    qubit0.t1 = -1.0
+    update_timestamp = qubits.save_qubit(qubit0)
+    assert qubits.get_qubit(name1, 0).t1 == -1.0
+    assert qubits.get_qubit(name1, 0, update_timestamp).t1 == 0.0
+    assert qubits.get_qubit(name1, 0, initial_timestamp) == None
 
 def test_get_qubits_by_device():
-    qubit1 = Qubit("test-device-1", 1, t1=1.0)
-    qubit2 = Qubit("test-device-1", 2, t2=1.0)
-    qubit_on_different_device = Qubit("test-device-2", 1, t1=1.0)
-    qubits.save_qubit(qubit1)
-    qubits.save_qubit(qubit2)
+    qubit_on_different_device = Qubit("test-device-2", 1, resonance_frequency=5.0, t1=5.0, t2=5.0)
+    save_qubits([qubit0, qubit1, qubit_on_different_device])
     qubits.save_qubit(qubit_on_different_device)
-    assert set(qubits.get_qubits_by_device("test-device-1")) == set([qubit1, qubit2])
-    delete_timestamp = qubits.delete_qubit("test-device-1", 1)
-    assert set(qubits.get_qubits_by_device("test-device-1")) == set([qubit2])
-    assert set(qubits.get_qubits_by_device("test-device-1", delete_timestamp)) == set([qubit1, qubit2])
+    assert set(qubits.get_qubits_by_device(name1)) == set([qubit0, qubit1])
+    delete_timestamp = qubits.delete_qubit(name1, 0)
+    assert set(qubits.get_qubits_by_device(name1)) == set([qubit1])
+    assert set(qubits.get_qubits_by_device(name1, delete_timestamp)) == set([qubit0, qubit1])
 
 def test_delete_qubit_nonexists():
     with pytest.raises(RuntimeError):
-        qubits.delete_qubit("test-device-1", 1)
+        qubits.delete_qubit(name1, 1)
+
+def save_qubits(qubit_list):
+    for qubit in qubit_list:
+        qubits.save_qubit(qubit)
