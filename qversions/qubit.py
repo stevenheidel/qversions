@@ -46,7 +46,7 @@ class Qubits(object):
         for this device's qubit with the same qubit id.
 
         :param Qubit qubit: Qubit to save
-        :return: Timestamp of this new qubit version
+        :return: Timestamp of the old qubit version
         :rtype: int
         """
         validate_param("qubit", qubit, Qubit)
@@ -91,7 +91,7 @@ class Qubits(object):
                 func.max(QubitModel.timestamp).label("latest_timestamp"))\
                         .group_by(QubitModel.device_id, QubitModel.qubit_id)
         if timestamp:
-            subquery = subquery.filter(QubitModel.timestamp <= timestamp)
+            subquery = subquery.filter(QubitModel.timestamp < timestamp)
         latest = subquery.subquery()
         query = session.query(QubitModel).join((latest, and_(
                 QubitModel.device_id == latest.c.device_id,
@@ -104,7 +104,7 @@ class Qubits(object):
 
         :param string device_id: Device id
         :param int qubit_id: Qubit id
-        :return: timestamp of when qubit was archived
+        :return: timestamp of the state before qubit was archived
         :rtype: int
         """
         validate_param("device_id", device_id, str)
@@ -130,7 +130,7 @@ class Qubits(object):
                 func.max(QubitModel.timestamp).label("latest_timestamp"))\
                         .group_by(QubitModel.device_id, QubitModel.qubit_id)
         if timestamp:
-            subquery = subquery.filter(QubitModel.timestamp <= timestamp)
+            subquery = subquery.filter(QubitModel.timestamp < timestamp)
         latest = subquery.subquery()
         query = session.query(QubitModel).join((latest, and_(
                 QubitModel.device_id == latest.c.device_id,

@@ -22,7 +22,7 @@ Data size:
 
 ## Special design goals
 
-Primary goal should be to never delete information. These parameters may be difficult they should never be accidentally deleted.
+Primary goal should be to never delete information. These parameters may be difficult to obtain so they should never be accidentally deleted.
 
 Design should be as simple as possible to avoid problems with bugs or any
 needed maintenance.
@@ -39,6 +39,6 @@ Qubits and Gates will have a timestamp as part of their primary key to allow ver
 
 ## Drawbacks
 
-Specifically excluding referential integrity. Most access will be through the DeviceSummary interface which can check for integrity at that time.
+Referential integrity is not enforced at the database layer. Most access will be through the DeviceSummary interface which can check for integrity at that time.
 
-Timestamp as part of the key could mean writes could fail if they happen at the exact same time. This should be very rare though: it takes a lot of effort to get new measurements on the hardware so doubt it will be updated often.
+Timestamp as part of the key could mean writes could fail if they happen at the exact same time. This should be very rare though: timestamps are stored in microseconds.

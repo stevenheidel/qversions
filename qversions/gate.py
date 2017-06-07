@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 
 """
 Module for interacting with Quantum Gates.
@@ -17,6 +18,10 @@ class Gate(object):
         """Width of control pulse in ns (optional)"""
         self.phase = phase
         """Phase of control pulse (optional)"""
+
+class Gates(object):
+    def __init__(self, engine):
+        self.sessionmaker = sessionmaker(bind=engine)
 
 def save_gate(gate):
     """

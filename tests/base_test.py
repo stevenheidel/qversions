@@ -12,5 +12,4 @@ def setup():
     session.query(DeviceModel).delete()
     session.query(GateModel).delete()
     session.query(QubitModel).delete()
-    session.commit()
     yield

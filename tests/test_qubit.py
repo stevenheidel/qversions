@@ -15,8 +15,8 @@ def test_update():
     qubit.t1 = 2.0
     update_timestamp = qubits.save_qubit(qubit)
     assert qubits.get_qubit("abc", 0).t1 == 2.0
-    assert qubits.get_qubit("abc", 0, update_timestamp-1).t1 == 1.0
-    assert qubits.get_qubit("abc", 0, initial_timestamp-1) == None
+    assert qubits.get_qubit("abc", 0, update_timestamp).t1 == 1.0
+    assert qubits.get_qubit("abc", 0, initial_timestamp) == None
 
 def test_get_qubits_by_device():
     qubit1 = Qubit(device_id="abc", qubit_id=1, t1=1.0)
@@ -26,7 +26,7 @@ def test_get_qubits_by_device():
     assert set(qubits.get_qubits_by_device("abc")) == set([qubit1, qubit2])
     delete_timestamp = qubits.delete_qubit("abc", 1)
     assert set(qubits.get_qubits_by_device("abc")) == set([qubit2])
-    assert set(qubits.get_qubits_by_device("abc", delete_timestamp-1)) == set([qubit1, qubit2])
+    assert set(qubits.get_qubits_by_device("abc", delete_timestamp)) == set([qubit1, qubit2])
 
 def test_delete_qubit_nonexists():
     with pytest.raises(RuntimeError):
