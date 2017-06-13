@@ -12,7 +12,9 @@ Base.metadata.create_all(_engine)
 q = DeviceSummaries(_engine)
 
 sample = "sample"
-if q.get_device(sample) is not None
+try:
+    q.get_device(sample)
+except:
     q.create_device(sample, "Sample device")
     q.save_qubit(Qubit(sample, 0, resonance_frequency=0.0, t1=0.0, t2=0.0))
     q.save_qubit(Qubit(sample, 1, resonance_frequency=1.0, t1=1.0, t2=1.0))
